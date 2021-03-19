@@ -1,0 +1,7 @@
+.vscode/launch.json
+env
+.vscode
+key*
+*.txt
+*.json
+__*
