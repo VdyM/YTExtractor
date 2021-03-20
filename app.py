@@ -1,6 +1,6 @@
 import os
 import requests
-#import key
+import key
 import datetime
 
 
@@ -39,7 +39,6 @@ def saveToFile(filename:str, data:list, dir_path=dir_path):
 
 def getNameAndNumber(playlist_ID: str, API_key: str):
     payload = {'id': playlist_ID, 'key': API_key}
-    print('\n', "*"*50, '\n', "getNameAndNumber for playlist_id: ", playlist_ID, '\n')
     try:
         response = requests.get(URL_PLAYLISTS, params=payload)
     except Exception as e:
@@ -55,7 +54,8 @@ def getNameAndNumber(playlist_ID: str, API_key: str):
         return
     number:int = jsonresponse["items"][0]["contentDetails"]["itemCount"]
     name:str = jsonresponse["items"][0]["snippet"]["title"]
-    print('\t', (name, number))
+    data: list = [name, number]
+    return data
 
 def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
     response = requests.get(URL_PLAYLISTITEMS, params=payload)
@@ -63,24 +63,35 @@ def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
         print("Error with getPlaylistItem GET request playlist_ID:", playlist_ID)
         return
     jsonresponse: dict = response.json()
+    data:list = []
     for item in jsonresponse["items"]:
         VideoTitle = item["snippet"]["title"]
         VideoId = item["contentDetails"]["videoId"]
         Position = item["snippet"]["position"]
-        print(Position," ID:", VideoId, " Title: ", VideoTitle)
-    return jsonresponse
+        data.append((Position, VideoId, VideoTitle))
+    return jsonresponse, data
 
-def getPlaylistItem(playlist_ID: str, API_key: str):
+def getPlaylistItem(playlist_ID: str, API_key: str) -> list:
     payload = {'playlistId': playlist_ID, 'key': API_key}
-    jsonresponse = getRequestAndPrint(playlist_ID, API_key, payload)
+    data: list = []
+    jsonresponse, stepData = getRequestAndPrint(playlist_ID, API_key, payload)
     if not jsonresponse:
         return
     
+    data.extend(stepData)
     while "nextPageToken" in jsonresponse.keys():
         nextPageToken = jsonresponse["nextPageToken"]
         payload = {"pageToken": nextPageToken, 'playlistId': playlist_ID, 'key': API_key}
-        jsonresponse = getRequestAndPrint(playlist_ID, API_key, payload)
+        jsonresponse, tempData = getRequestAndPrint(playlist_ID, API_key, payload)
+        data.extend(tempData)
+    return data
 
+def getAllItem(playlist_ID: str, API_key: str)->list :
+    data:list = []
+    data1 = getNameAndNumber(playlist_ID, API_key)
+    data2 = getPlaylistItem(playlist_ID, API_key)
+    data = [playlist_ID] +data1 + data2
+    return data
     
     
 
@@ -88,10 +99,11 @@ def main():
     todayUTC = datetime.datetime.now(datetime.timezone.utc)
     print("Time :", todayUTC)
     checkCreateDir(dir_path)
-    # for item in key.PLAYLISTS_ID:
-    #     playlist_ID = item
-    #     getNameAndNumber(playlist_ID, key.API_KEY)
-    #     getPlaylistItem(playlist_ID, key.API_KEY)
+    for count, playlist_id in enumerate(key.PLAYLIST_IDS):
+        item = getAllItem(playlist_id, key.API_KEY)
+        print('\n[{0}]'.format(count+1))
+        for element in item:
+            print(element)
 
 if __name__ == "__main__":
     main()
