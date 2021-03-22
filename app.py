@@ -4,7 +4,7 @@ import key
 import datetime
 
 
-URL_PLAYLISTITEMS:str = 'https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet%2CcontentDetails&maxResults=50'
+URL_PLAYLISTITEMS:str = 'https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet%2CcontentDetails'
 URL_PLAYLISTS:str = 'https://youtube.googleapis.com/youtube/v3/playlists?part=contentDetails%2C%20snippet'
 dir_path:str = os.path.expanduser('~/Documents') + os.path.sep + "YTExtractor"
 
@@ -101,6 +101,9 @@ def main():
     checkCreateDir(dir_path)
     for count, playlist_id in enumerate(key.PLAYLIST_IDS):
         item = getAllItem(playlist_id, key.API_KEY)
+        playlistname = item[1].split()
+        filename = playlistname[0]+'.txt'
+        #saveToFile(filename, item)
         print('\n[{0}]'.format(count+1))
         for element in item:
             print(element)
