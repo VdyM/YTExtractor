@@ -6,32 +6,33 @@ import datetime
 
 URL_PLAYLISTITEMS:str = 'https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet%2CcontentDetails'
 URL_PLAYLISTS:str = 'https://youtube.googleapis.com/youtube/v3/playlists?part=contentDetails%2C%20snippet'
-dir_path:str = os.path.expanduser('~/Documents') + os.path.sep + "YTExtractor"
+DIR_PATH:str = os.path.expanduser('~/Documents') + os.path.sep + "YTExtractor"
 
 
 def checkDir(path:str) -> bool:
     return os.path.isdir(path)
 
+
 def createDataDir(path:str):
     try:
         os.mkdir(path)
     except OSError:
-        print ("Creation of the directory %s failed" % path)
+        print("Creation of the directory %s failed" % path)
     else:
-        print ("Successfully created the directory %s " % path)
+        print("Successfully created the directory %s " % path)
+
 
 def checkCreateDir(path:str):
     if not checkDir(path):
         createDataDir(path)
-    else:
-        print("The directory exists!!! ")
 
-def saveToFile(filename:str, data:list, dir_path=dir_path):
+
+def saveToFile(filename:str, data:list, dir_path:str=DIR_PATH):
     path:str = dir_path + os.path.sep + filename
-    with open(path, 'w') as file:
+    with open(path, 'w', encoding='utf-8') as file:
         for item in data:
             try:
-                file.write(str(item))
+                file.write(str(item)+'\n')
             except Exception as e:
                 print("File write exeption\n", e)
                 return
@@ -43,7 +44,7 @@ def getNameAndNumber(playlist_ID: str, API_key: str):
         response = requests.get(URL_PLAYLISTS, params=payload)
     except Exception as e:
         print("Here is error", e)
-        return 
+        return
     if response.status_code != requests.codes.ok:
         print("Error with getNameAndNumber GET request playlist_id:", playlist_ID)
         return
@@ -54,8 +55,7 @@ def getNameAndNumber(playlist_ID: str, API_key: str):
         return
     number:int = jsonresponse["items"][0]["contentDetails"]["itemCount"]
     name:str = jsonresponse["items"][0]["snippet"]["title"]
-    data: list = [name, number]
-    return data
+    return name, number
 
 def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
     response = requests.get(URL_PLAYLISTITEMS, params=payload)
@@ -63,21 +63,21 @@ def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
         print("Error with getPlaylistItem GET request playlist_ID:", playlist_ID)
         return
     jsonresponse: dict = response.json()
-    data:list = []
+    data = []
     for item in jsonresponse["items"]:
         VideoTitle = item["snippet"]["title"]
         VideoId = item["contentDetails"]["videoId"]
         Position = item["snippet"]["position"]
-        data.append((Position, VideoId, VideoTitle))
+        data.append('{0}\t{1}\t{2}'.format(str(Position), str(VideoId), VideoTitle))
     return jsonresponse, data
 
-def getPlaylistItem(playlist_ID: str, API_key: str) -> list:
+def getPlaylistItems(playlist_ID: str, API_key: str) -> list:
     payload = {'playlistId': playlist_ID, 'key': API_key}
-    data: list = []
+    data = []
     jsonresponse, stepData = getRequestAndPrint(playlist_ID, API_key, payload)
     if not jsonresponse:
         return
-    
+
     data.extend(stepData)
     while "nextPageToken" in jsonresponse.keys():
         nextPageToken = jsonresponse["nextPageToken"]
@@ -86,27 +86,20 @@ def getPlaylistItem(playlist_ID: str, API_key: str) -> list:
         data.extend(tempData)
     return data
 
-def getAllItem(playlist_ID: str, API_key: str)->list :
-    data:list = []
-    data1 = getNameAndNumber(playlist_ID, API_key)
-    data2 = getPlaylistItem(playlist_ID, API_key)
-    data = [playlist_ID] +data1 + data2
-    return data
-    
-    
+
 
 def main():
     todayUTC = datetime.datetime.now(datetime.timezone.utc)
-    print("Time :", todayUTC)
-    checkCreateDir(dir_path)
+    print("Date :", todayUTC)
+    checkCreateDir(DIR_PATH)
     for count, playlist_id in enumerate(key.PLAYLIST_IDS):
-        item = getAllItem(playlist_id, key.API_KEY)
-        playlistname = item[1].split()
+        playlist_name, itemCount = getNameAndNumber(playlist_id, key.API_KEY)
+        playlistname = playlist_name.split()
         filename = playlistname[0]+'.txt'
-        #saveToFile(filename, item)
-        print('\n[{0}]'.format(count+1))
-        for element in item:
-            print(element)
+        playlist_items = getPlaylistItems(playlist_id, key.API_KEY)
+        data = [playlist_id, playlist_name, itemCount] + playlist_items
+        saveToFile(filename, data)
+
 
 if __name__ == "__main__":
     main()
