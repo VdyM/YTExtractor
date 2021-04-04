@@ -2,6 +2,7 @@ import os
 import requests
 import key
 import datetime
+import filecmp
 
 
 URL_PLAYLISTITEMS:str = 'https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet%2CcontentDetails'
@@ -13,7 +14,7 @@ def checkDir(path:str) -> bool:
     return os.path.isdir(path)
 
 
-def createDataDir(path:str):
+def createDir(path:str):
     try:
         os.mkdir(path)
     except OSError:
@@ -24,7 +25,7 @@ def createDataDir(path:str):
 
 def checkCreateDir(path:str):
     if not checkDir(path):
-        createDataDir(path)
+        createDir(path)
 
 
 def saveToFile(filename:str, data:list, dir_path:str=DIR_PATH):
@@ -37,6 +38,15 @@ def saveToFile(filename:str, data:list, dir_path:str=DIR_PATH):
                 print("File write exeption\n", e)
                 return
     print("The File {0} was created".format(filename))
+
+
+def deleteFile(file_path: str):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print("The file has been deleted: ", file_path)
+    else:
+        print("The file does not exist")
+
 
 def getNameAndNumber(playlist_ID: str, API_key: str):
     payload = {'id': playlist_ID, 'key': API_key}
@@ -57,6 +67,7 @@ def getNameAndNumber(playlist_ID: str, API_key: str):
     name:str = jsonresponse["items"][0]["snippet"]["title"]
     return name, number
 
+
 def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
     response = requests.get(URL_PLAYLISTITEMS, params=payload)
     if response.status_code != requests.codes.ok:
@@ -70,6 +81,7 @@ def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
         Position = item["snippet"]["position"]
         data.append('{0}\t{1}\t{2}'.format(str(Position), str(VideoId), VideoTitle))
     return jsonresponse, data
+
 
 def getPlaylistItems(playlist_ID: str, API_key: str) -> list:
     payload = {'playlistId': playlist_ID, 'key': API_key}
@@ -89,16 +101,25 @@ def getPlaylistItems(playlist_ID: str, API_key: str) -> list:
 
 
 def main():
-    todayUTC = datetime.datetime.now(datetime.timezone.utc)
-    print("Date :", todayUTC)
+    today = datetime.datetime.now()
+    date_now = today.strftime("%Y_%m_%d")
+    print("Date :", today, date_now)
     checkCreateDir(DIR_PATH)
     for count, playlist_id in enumerate(key.PLAYLIST_IDS):
         playlist_name, itemCount = getNameAndNumber(playlist_id, key.API_KEY)
-        playlistname = playlist_name.split()
-        filename = playlistname[0]+'.txt'
+        playlist_name_array = playlist_name.split()
+        directory_name = "_".join(playlist_name_array)
+        playlist_Dir = DIR_PATH + os.path.sep + directory_name
+        print(playlist_Dir)
+        checkCreateDir(playlist_Dir)
+        file1 = playlist_Dir + os.path.sep + "2021_04_05.txt"
+        file2 = playlist_Dir + os.path.sep + "2021_04_04.txt "
+        print(filecmp.cmp(file1, file2))
+        break
+        filename = date_now +".txt"
         playlist_items = getPlaylistItems(playlist_id, key.API_KEY)
         data = [playlist_id, playlist_name, itemCount] + playlist_items
-        saveToFile(filename, data)
+        saveToFile(filename, data, playlist_Dir)
 
 
 if __name__ == "__main__":
