@@ -30,6 +30,9 @@ def checkCreateDir(path:str):
 
 def saveToFile(filename:str, data:list, dir_path:str=DIR_PATH):
     path:str = dir_path + os.path.sep + filename
+    if os.path.isfile(path):
+        print("File {0} exist".format(path))
+        return
     with open(path, 'w', encoding='utf-8') as file:
         for item in data:
             try:
@@ -37,7 +40,7 @@ def saveToFile(filename:str, data:list, dir_path:str=DIR_PATH):
             except Exception as e:
                 print("File write exeption\n", e)
                 return
-    print("The File {0} was created".format(filename))
+    print("File {0} was created".format(path))
 
 
 def deleteFile(file_path: str):
@@ -46,6 +49,24 @@ def deleteFile(file_path: str):
         print("The file has been deleted: ", file_path)
     else:
         print("The file does not exist")
+
+def deleteSameFiles(list_dirs_path: list[str], all_variants = False):
+    for path in list_dirs_path:
+        files_list_Nsorted = os.listdir(path)
+        n = len(files_list_Nsorted)
+        if n < 2 :
+            continue
+        files_list = sorted(files_list_Nsorted, reverse=True) # new ... oldest
+
+        last1, last2 = files_list[0], files_list[1]
+        print(last1, last2)
+        continue
+        if last1 == last2:
+            continue
+        last1_path = path + os.path.sep + last1
+        last2_path = path + os.path.sep + last2
+        if filecmp.cmp(last1_path, last2_path):
+            deleteFile(last2_path)
 
 
 def getNameAndNumber(playlist_ID: str, API_key: str):
@@ -105,21 +126,20 @@ def main():
     date_now = today.strftime("%Y_%m_%d")
     print("Date :", today, date_now)
     checkCreateDir(DIR_PATH)
+    Playlist_Dirs: List[str] = []
     for count, playlist_id in enumerate(key.PLAYLIST_IDS):
         playlist_name, itemCount = getNameAndNumber(playlist_id, key.API_KEY)
         playlist_name_array = playlist_name.split()
         directory_name = "_".join(playlist_name_array)
         playlist_Dir = DIR_PATH + os.path.sep + directory_name
+        Playlist_Dirs.append(playlist_Dir)
         print(playlist_Dir)
         checkCreateDir(playlist_Dir)
-        file1 = playlist_Dir + os.path.sep + "2021_04_05.txt"
-        file2 = playlist_Dir + os.path.sep + "2021_04_04.txt "
-        print(filecmp.cmp(file1, file2))
-        break
         filename = date_now +".txt"
         playlist_items = getPlaylistItems(playlist_id, key.API_KEY)
         data = [playlist_id, playlist_name, itemCount] + playlist_items
         saveToFile(filename, data, playlist_Dir)
+    deleteSameFiles(Playlist_Dirs)
 
 
 if __name__ == "__main__":
