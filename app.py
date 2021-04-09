@@ -28,19 +28,16 @@ def checkCreateDir(path:str):
         createDir(path)
 
 
-def saveToFile(filename:str, data:list, dir_path:str=DIR_PATH):
-    path:str = dir_path + os.path.sep + filename
-    if os.path.isfile(path):
-        print("File {0} exist".format(path))
-        return
-    with open(path, 'w', encoding='utf-8') as file:
+def saveToFile(file_path:str, data:list):
+    with open(file_path, 'w', encoding='utf-8') as file:
         for item in data:
             try:
                 file.write(str(item)+'\n')
             except Exception as e:
                 print("File write exeption\n", e)
                 return
-    print("File {0} was created".format(path))
+
+    print("File {0} was created".format(file_path))
 
 
 def deleteFile(file_path: str):
@@ -50,23 +47,18 @@ def deleteFile(file_path: str):
     else:
         print("The file does not exist")
 
-def deleteSameFiles(list_dirs_path: list[str], all_variants = False):
-    for path in list_dirs_path:
-        files_list_Nsorted = os.listdir(path)
-        n = len(files_list_Nsorted)
-        if n < 2 :
-            continue
-        files_list = sorted(files_list_Nsorted, reverse=True) # new ... oldest
-
-        last1, last2 = files_list[0], files_list[1]
-        print(last1, last2)
-        continue
-        if last1 == last2:
-            continue
-        last1_path = path + os.path.sep + last1
-        last2_path = path + os.path.sep + last2
-        if filecmp.cmp(last1_path, last2_path):
-            deleteFile(last2_path)
+def deleteSameLastFiles( path_dir:str ):
+    files_list_Nsorted = os.listdir(path_dir)
+    n = len(files_list_Nsorted)
+    if n < 2 :
+        return
+    files_list = sorted(files_list_Nsorted, reverse=True) # new ... oldest
+    last1_name, last2_name = files_list[0], files_list[1]
+    print(last1_name, last2_name)
+    last1_path = path_dir + os.path.sep + last1_name
+    last2_path = path_dir + os.path.sep + last2_name
+    if filecmp.cmp(last1_path, last2_path):
+        deleteFile(last2_path)
 
 
 def getNameAndNumber(playlist_ID: str, API_key: str):
@@ -89,7 +81,7 @@ def getNameAndNumber(playlist_ID: str, API_key: str):
     return name, number
 
 
-def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
+def getRequest(playlist_ID: str, API_key: str, payload: dict):
     response = requests.get(URL_PLAYLISTITEMS, params=payload)
     if response.status_code != requests.codes.ok:
         print("Error with getPlaylistItem GET request playlist_ID:", playlist_ID)
@@ -107,7 +99,7 @@ def getRequestAndPrint(playlist_ID: str, API_key: str, payload: dict):
 def getPlaylistItems(playlist_ID: str, API_key: str) -> list:
     payload = {'playlistId': playlist_ID, 'key': API_key}
     data = []
-    jsonresponse, stepData = getRequestAndPrint(playlist_ID, API_key, payload)
+    jsonresponse, stepData = getRequest(playlist_ID, API_key, payload)
     if not jsonresponse:
         return
 
@@ -115,7 +107,7 @@ def getPlaylistItems(playlist_ID: str, API_key: str) -> list:
     while "nextPageToken" in jsonresponse.keys():
         nextPageToken = jsonresponse["nextPageToken"]
         payload = {"pageToken": nextPageToken, 'playlistId': playlist_ID, 'key': API_key}
-        jsonresponse, tempData = getRequestAndPrint(playlist_ID, API_key, payload)
+        jsonresponse, tempData = getRequest(playlist_ID, API_key, payload)
         data.extend(tempData)
     return data
 
@@ -124,22 +116,23 @@ def getPlaylistItems(playlist_ID: str, API_key: str) -> list:
 def main():
     today = datetime.datetime.now()
     date_now = today.strftime("%Y_%m_%d")
-    print("Date :", today, date_now)
+    print("Date :", today)
     checkCreateDir(DIR_PATH)
-    Playlist_Dirs: List[str] = []
     for count, playlist_id in enumerate(key.PLAYLIST_IDS):
         playlist_name, itemCount = getNameAndNumber(playlist_id, key.API_KEY)
         playlist_name_array = playlist_name.split()
         directory_name = "_".join(playlist_name_array)
         playlist_Dir = DIR_PATH + os.path.sep + directory_name
-        Playlist_Dirs.append(playlist_Dir)
-        print(playlist_Dir)
         checkCreateDir(playlist_Dir)
         filename = date_now +".txt"
+        file_path = playlist_Dir + os.path.sep + filename
+        if os.path.isfile(file_path):
+            print("File {0} exist".format(file_path))
+            continue
         playlist_items = getPlaylistItems(playlist_id, key.API_KEY)
         data = [playlist_id, playlist_name, itemCount] + playlist_items
-        saveToFile(filename, data, playlist_Dir)
-    deleteSameFiles(Playlist_Dirs)
+        saveToFile(file_path, data)
+        deleteSameLastFiles(playlist_Dir)
 
 
 if __name__ == "__main__":
